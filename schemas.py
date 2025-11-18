@@ -1,48 +1,63 @@
 """
-Database Schemas
+Database Schemas for StepWize
 
-Define your MongoDB collection schemas here using Pydantic models.
-These schemas are used for data validation in your application.
+Each Pydantic model represents a MongoDB collection (lowercased class name).
 
-Each Pydantic model represents a collection in your database.
-Model name is converted to lowercase for the collection name:
-- User -> "user" collection
-- Product -> "product" collection
-- BlogPost -> "blogs" collection
+Collections:
+- user
+- task
+- session
+- otp
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import List, Optional, Literal, Dict, Any
 
-# Example schemas (replace with your own):
+
+class SubTask(BaseModel):
+    emoji: str = Field("✅", description="Emoji representing the subtask")
+    title: str = Field(..., description="Short title for the subtask")
+    estimatedMinutes: int = Field(5, ge=1, le=480)
+    completed: bool = Field(False)
+
+
+class TimerSession(BaseModel):
+    status: Literal["idle", "running", "paused"] = "idle"
+    startedAt: Optional[str] = None  # ISO timestamp
+    elapsedSeconds: int = 0
+    currentSubtaskIndex: Optional[int] = None
+
+
+class Task(BaseModel):
+    userId: str
+    title: str
+    description: str = ""
+    estimatedMinutes: int = Field(15, ge=1, le=1440)
+    emoji: str = "🧠"
+    completed: bool = False
+    voiceReminder: bool = False
+    subtasks: List[SubTask] = []
+    timerSession: TimerSession = TimerSession()
+    # Simple AI history for undo/redo
+    aiHistory: List[Dict[str, Any]] = []  # list of snapshots
+    aiCursor: int = -1
+
 
 class User(BaseModel):
-    """
-    Users collection schema
-    Collection name: "user" (lowercase of class name)
-    """
-    name: str = Field(..., description="Full name")
-    email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
-    is_active: bool = Field(True, description="Whether user is active")
+    email: Optional[str] = None
+    name: Optional[str] = None
+    image: Optional[str] = None
+    role: Literal["user", "admin"] = "user"
+    isGuest: bool = False
 
-class Product(BaseModel):
-    """
-    Products collection schema
-    Collection name: "product" (lowercase of class name)
-    """
-    title: str = Field(..., description="Product title")
-    description: Optional[str] = Field(None, description="Product description")
-    price: float = Field(..., ge=0, description="Price in dollars")
-    category: str = Field(..., description="Product category")
-    in_stock: bool = Field(True, description="Whether product is in stock")
 
-# Add your own schemas here:
-# --------------------------------------------------
+class Session(BaseModel):
+    userId: str
+    token: str
+    createdAt: Optional[str] = None
 
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+
+class OTP(BaseModel):
+    email: str
+    code: str
+    expiresAt: str
